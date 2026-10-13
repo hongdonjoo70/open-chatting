@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}Open Chatting - 입장{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center py-4" style="min-height: 75vh;">
+    <div class="col-12 col-lg-10 col-xl-9">
+        <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="row g-0">
+                <!-- Left Side: Uploaded Image Banner -->
+                <div class="col-12 col-md-6 position-relative d-flex flex-column justify-content-end p-4 p-lg-5 text-white" 
+                     style="background: linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(0,0,0,0.78)), url('{{ url_for('static', filename='images/login_image.jpg') }}') center/cover no-repeat; min-height: 380px;">
+                    <div class="position-relative" style="z-index: 2;">
+                        <!-- Korean Traditional Color Badge -->
+                        <span class="badge badge-kr-gold px-3 py-2 rounded-pill fw-bold mb-3 d-inline-block">
+                            <i class="bi bi-chat-quote-fill me-1"></i>소통의 마당
+                        </span>
+                        <!-- Korean Traditional Sunset Gold Text -->
+                        <h2 class="fw-bold mb-2 text-kr-gold text-shadow" style="letter-spacing: -0.5px;">
+                            열린 대화, 자유로운 소통
+                        </h2>
+                        <p class="text-white-50 mb-0 small" style="line-height: 1.6;">
+                            IP 기반 1인 1접속과 실시간 공지사항, 귓속말, 파일 공유를 지원하는 열린 대화 공간입니다.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Right Side: Login & Entry Form -->
+                <div class="col-12 col-md-6 bg-white p-4 p-md-5 d-flex flex-column justify-content-center">
+                    <div class="text-center mb-4">
+                        <!-- "오픈 채팅방 입장" removed as requested; Korean Traditional Color Subtitle kept -->
+                        <p class="small mb-0 fw-semibold" style="color: var(--kr-red); letter-spacing: 0.5px;">
+                            <i class="bi bi-shield-check me-1"></i>접속 IP 기반 사용자 인증
+                        </p>
+                    </div>
+
+                    <!-- IP & Nickname Info -->
+                    <div class="list-group mb-4 shadow-sm border-0">
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2 border-light-subtle">
+                            <span class="text-muted small"><i class="bi bi-broadcast me-2" style="color: var(--kr-gold);"></i>접속 IP 주소</span>
+                            <span class="badge bg-secondary font-monospace px-3 py-2">{{ ip }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2 border-light-subtle">
+                            <span class="text-muted small"><i class="bi bi-person-badge me-2" style="color: var(--kr-red);"></i>사용자 닉네임</span>
+                            <span class="fw-bold fs-6" style="color: var(--kr-red);">{{ nickname }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-2 border-light-subtle">
+                            <span class="text-muted small"><i class="bi bi-circle-fill me-2" style="color: var(--kr-jade); font-size: 0.75rem;"></i>접속 상태</span>
+                            {% if is_connected %}
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>이미 접속 중</span>
+                            {% else %}
+                                <span class="badge" style="background-color: var(--kr-jade);"><i class="bi bi-check-circle-fill me-1"></i>접속 가능</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if is_connected %}
+                        <div class="alert alert-warning border-warning d-flex align-items-center mb-4" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill fs-3 me-3 text-warning flex-shrink-0"></i>
+                            <div>
+                                <strong>현재 해당 IP로 접속된 채팅창이 열려 있습니다.</strong><br>
+                                <small class="text-muted">정책상 IP당 1개의 세션만 접속 가능합니다. 기존 창을 닫거나 아래 버튼으로 세션을 초기화해주세요.</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <form action="{{ url_for('auth.reset_session') }}" method="POST">
+                                <button type="submit" class="btn btn-outline-danger w-100 py-2 fw-semibold">
+                                    <i class="bi bi-arrow-repeat me-1"></i>기존 세션 강제 초기화 후 입장
+                                </button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <form action="{{ url_for('auth.enter') }}" method="POST">
+                            <div class="d-grid mb-3">
+                                <!-- Changed button text to "입장하기" with Korean Dancheong Red color -->
+                                <button type="submit" class="btn btn-primary btn-lg fw-bold shadow-sm py-3">
+                                    <i class="bi bi-door-open-fill me-2"></i>입장하기
+                                </button>
+                            </div>
+                        </form>
+                    {% endif %}
+
+                    <div class="text-center text-muted small mt-3 border-top pt-3">
+                        <ul class="list-unstyled mb-0 text-start ps-2" style="font-size: 0.8rem; line-height: 1.6;">
+                            <li><i class="bi bi-info-circle me-1" style="color: var(--kr-gold);"></i> 최초 접속 시 닉네임은 IP 주소로 자동 설정됩니다.</li>
+                            <li><i class="bi bi-info-circle me-1" style="color: var(--kr-gold);"></i> 입장 후 닉네임을 변경하면 재접속 시에도 유지됩니다.</li>
+                            <li><i class="bi bi-info-circle me-1" style="color: var(--kr-gold);"></i> 창을 닫으면 사용자의 접속이 자동으로 해제됩니다.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}

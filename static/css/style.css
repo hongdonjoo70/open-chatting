@@ -1,0 +1,188 @@
+/* Korean Traditional Color Palette */
+:root {
+    --kr-red: #b83a2d;          /* 단청 홍색 / 다홍빛 */
+    --kr-red-dark: #982a1f;     /* 짙은 진홍색 */
+    --kr-red-light: #faecea;    /* 연한 홍매색 */
+    --kr-gold: #c9882a;         /* 치자 / 황금색 */
+    --kr-gold-light: #fdf6ec;   /* 연한 치자빛 */
+    --kr-indigo: #20364f;       /* 감청 / 쪽빛 */
+    --kr-jade: #2b6151;         /* 옥빛 / 솔빛 */
+    --kr-ink: #2b2b2d;          /* 묵색 / 먹색 */
+}
+
+/* Primary color override from blue to Korean Traditional Dancheong Red */
+.btn-primary {
+    background-color: var(--kr-red) !important;
+    border-color: var(--kr-red) !important;
+    color: #ffffff !important;
+}
+
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active {
+    background-color: var(--kr-red-dark) !important;
+    border-color: var(--kr-red-dark) !important;
+    color: #ffffff !important;
+}
+
+.btn-outline-primary {
+    color: var(--kr-red) !important;
+    border-color: var(--kr-red) !important;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--kr-red) !important;
+    color: #ffffff !important;
+}
+
+.text-primary {
+    color: var(--kr-red) !important;
+}
+
+.bg-primary {
+    background-color: var(--kr-red) !important;
+}
+
+.bg-primary-subtle {
+    background-color: var(--kr-red-light) !important;
+    color: var(--kr-red) !important;
+}
+
+.border-primary, .border-primary-subtle {
+    border-color: #eed5d1 !important;
+}
+
+/* Navbar branding */
+.navbar-brand .bi-chat-dots-fill {
+    color: var(--kr-gold) !important;
+}
+
+/* Korean theme badge & text utilities */
+.badge-kr-gold {
+    background-color: rgba(201, 136, 42, 0.25);
+    color: #fce1a9;
+    border: 1px solid rgba(252, 225, 169, 0.5);
+}
+
+.badge-kr-red {
+    background-color: rgba(184, 58, 45, 0.25);
+    color: #ffd0cb;
+    border: 1px solid rgba(255, 208, 203, 0.5);
+}
+
+.text-kr-gold {
+    color: #e5a742 !important;
+}
+
+.text-kr-red {
+    color: var(--kr-red) !important;
+}
+
+.bg-kr-red-subtle {
+    background-color: var(--kr-red-light) !important;
+    color: var(--kr-red) !important;
+}
+
+.bg-kr-gold-subtle {
+    background-color: var(--kr-gold-light) !important;
+    color: var(--kr-gold) !important;
+}
+
+/* Chat Messages Scroll Container */
+#chatMessagesContainer {
+    scroll-behavior: smooth;
+}
+
+/* Custom subtle scrollbar */
+#chatMessagesContainer::-webkit-scrollbar,
+#searchResultsContainer::-webkit-scrollbar,
+.overflow-auto::-webkit-scrollbar {
+    width: 6px;
+}
+
+#chatMessagesContainer::-webkit-scrollbar-thumb,
+#searchResultsContainer::-webkit-scrollbar-thumb,
+.overflow-auto::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+/* User item interactive hover */
+.user-item {
+    transition: background-color 0.15s ease-in-out;
+}
+
+.user-item:hover {
+    background-color: #e9ecef !important;
+}
+
+/* System Message styling */
+.system-message {
+    font-size: 0.85rem;
+    color: #6c757d;
+    background-color: rgba(108, 117, 125, 0.08);
+    border-radius: 20px;
+    padding: 4px 14px;
+    margin: 4px auto;
+    display: inline-block;
+}
+
+/* Search results item */
+.search-result-item {
+    transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+}
+
+.search-result-item:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Multi-line message body with line-break preservation */
+.message-body {
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.5;
+}
+
+/* Chat textarea styling */
+#messageInput {
+    resize: none;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+/* Image preview in chat */
+.chat-image-attachment {
+    max-width: 280px;
+    max-height: 240px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.15s ease-in-out;
+}
+
+.chat-image-attachment:hover {
+    transform: scale(1.02);
+}
+
+/* File download attachment card */
+.chat-file-box {
+    display: inline-flex;
+    align-items: center;
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 6px 12px;
+    text-decoration: none;
+    color: #212529;
+    max-width: 100%;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.chat-file-box:hover {
+    background-color: #f1f3f5;
+    border-color: var(--kr-red);
+    color: var(--kr-red);
+}
+
+/* Text shadow for image overlay */
+.text-shadow {
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+}

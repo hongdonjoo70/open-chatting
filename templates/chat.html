@@ -1,0 +1,464 @@
+{% extends 'base.html' %}
+
+{% block title %}Open Chatting - 대화방{% endblock %}
+
+{% block nav_items %}
+<div class="d-flex align-items-center gap-2">
+    <!-- Screen Share Button -->
+    <button class="btn btn-outline-warning btn-sm text-white fw-semibold" id="btnToggleScreenShare" title="특정 창/화면 공유">
+        <i class="bi bi-display me-1"></i>화면 공유
+    </button>
+
+    <!-- Search / Explore Button -->
+    <button class="btn btn-outline-info btn-sm text-white" data-bs-toggle="modal" data-bs-target="#searchModal">
+        <i class="bi bi-search me-1"></i>채팅 탐색창
+    </button>
+    
+    <!-- Nickname & Profile Badge -->
+    <span class="badge bg-secondary p-2 d-none d-md-inline-flex align-items-center">
+        <i class="bi bi-hdd-network me-1"></i>IP: <span id="currentIpSpan">{{ user_ip }}</span>
+    </span>
+    <span class="badge bg-primary p-2 d-inline-flex align-items-center">
+        <i class="bi bi-person-fill me-1"></i><span id="currentNicknameSpan">{{ nickname }}</span>
+    </span>
+    
+    <!-- Change Nickname Button -->
+    <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#nicknameModal">
+        <i class="bi bi-pencil-square me-1"></i>이름 변경
+    </button>
+    
+    <!-- Exit / Leave Button -->
+    <a href="{{ url_for('auth.login') }}" class="btn btn-danger btn-sm" id="btnLeave">
+        <i class="bi bi-box-arrow-right me-1"></i>퇴장
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3">
+    <!-- Notice Section (Visible if notice exists) -->
+    <div id="noticeBanner" class="alert alert-warning border-warning shadow-sm mb-3 d-flex align-items-start {% if not latest_notice %}d-none{% endif %}" role="alert" data-notice-id="{{ latest_notice.id if latest_notice else '' }}">
+        <i class="bi bi-megaphone-fill fs-4 me-3 text-warning flex-shrink-0 mt-1"></i>
+        <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="badge bg-danger">공지사항</span>
+                <div class="d-flex align-items-center gap-2">
+                    <small class="text-muted" id="noticeMeta">
+                        작성자: <span id="noticeAuthor">{{ latest_notice.author_name if latest_notice else '' }}</span> | 
+                        <span id="noticeTime">{{ latest_notice.created_at if latest_notice else '' }}</span>
+                    </small>
+                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 fw-semibold" id="btnDeleteNotice" title="공지사항 삭제">
+                        <i class="bi bi-trash3 me-1"></i>삭제
+                    </button>
+                </div>
+            </div>
+            <div id="noticeContent" class="fw-bold fs-6 text-dark text-break">
+                {{ latest_notice.content if latest_notice else '' }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen Sharing Player Section (Visible when screen sharing is active) -->
+    <div id="screenShareSection" class="card shadow-sm border-0 mb-3 d-none">
+        <div class="card-header bg-dark text-white py-2 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <span class="badge bg-danger me-2"><i class="bi bi-record-circle me-1"></i>화면 공유 중</span>
+                <span class="fw-bold" id="screenSharerText">공유자</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-light py-0 px-2" id="btnFullscreenScreen" title="전체화면 전환">
+                    <i class="bi bi-fullscreen"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-danger py-0 px-2 fw-semibold d-none" id="btnStopSharingMyScreen">
+                    <i class="bi bi-stop-circle me-1"></i>공유 취소
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0 bg-black text-center d-flex justify-content-center align-items-center position-relative" style="max-height: 480px; min-height: 260px;">
+            <video id="screenShareVideo" autoplay playsinline class="w-100 h-100" style="max-height: 480px; object-fit: contain;"></video>
+            <div id="screenShareLoading" class="position-absolute text-white d-none">
+                <div class="spinner-border text-light me-2" role="status"></div>
+                <span>화면 스트림을 연결하고 있습니다...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Chatting Grid -->
+    <div class="row g-3">
+        <!-- Chat Area (Left/Center) -->
+        <div class="col-12 col-lg-9">
+            <div class="card shadow-sm border-0 d-flex flex-column" style="height: calc(100vh - 200px); min-height: 520px;">
+                <!-- Chat Window Header -->
+                <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center border-bottom">
+                    <span class="fw-bold text-dark">
+                        <i class="bi bi-chat-text-fill text-primary me-2"></i>실시간 대화창
+                    </span>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 fw-semibold" id="btnClearChat" title="대화 내용 전체 삭제">
+                            <i class="bi bi-trash3 me-1"></i>대화 삭제
+                        </button>
+                        <small class="text-muted d-none d-md-inline">
+                            <i class="bi bi-info-circle me-1"></i>창을 닫으면 접속이 해제됩니다.
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Chat Messages Scroll Area -->
+                <div class="card-body overflow-auto flex-grow-1 p-3 bg-light" id="chatMessagesContainer">
+                    <div id="chatMessages" class="d-flex flex-column gap-2">
+                        <!-- Initial Messages Rendered from DB -->
+                        {% for msg in initial_messages %}
+                            {% if msg.msg_type == 'notice' %}
+                                <div class="message-card notice-message p-2 rounded-3 border-start border-4 border-warning bg-warning-subtle shadow-sm">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span>
+                                            <span class="badge bg-warning text-dark me-1"><i class="bi bi-megaphone-fill me-1"></i>공지</span>
+                                            <strong class="text-dark">{{ msg.sender_name }}</strong>
+                                            <small class="text-muted">({{ msg.sender_ip }})</small>
+                                        </span>
+                                        <small class="text-muted">{{ msg.created_at }}</small>
+                                    </div>
+                                    {% if msg.content %}
+                                        <div class="message-body text-dark fw-bold ps-2">{{ msg.content }}</div>
+                                    {% endif %}
+                                    {% if msg.file_url %}
+                                        <div class="mt-2 ps-2">
+                                            {% if msg.file_type == 'image' %}
+                                                <a href="{{ msg.file_url }}" target="_blank" title="클릭하여 원본 사진 보기">
+                                                    <img src="{{ msg.file_url }}" class="chat-image-attachment border shadow-sm" alt="{{ msg.file_name }}">
+                                                </a>
+                                            {% else %}
+                                                <a href="/api/download/{{ msg.file_url.split('/')[-1] }}?name={{ msg.file_name }}" class="chat-file-box shadow-sm" download>
+                                                    <i class="bi bi-file-earmark-arrow-down-fill fs-4 text-warning me-2"></i>
+                                                    <div class="text-truncate" style="max-width: 280px;">
+                                                        <div class="fw-semibold small text-truncate">{{ msg.file_name }}</div>
+                                                        <small class="text-muted">클릭하여 다운로드</small>
+                                                    </div>
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% elif msg.msg_type == 'dm' %}
+                                <div class="message-card dm-message p-2 rounded-3 border-start border-4 border-info bg-info-subtle shadow-sm">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span>
+                                            <span class="badge bg-info text-dark me-1"><i class="bi bi-lock-fill me-1"></i>귓속말</span>
+                                            <strong class="text-primary">{{ msg.sender_name }}</strong>
+                                            <i class="bi bi-arrow-right mx-1 text-muted"></i>
+                                            <strong class="text-dark">{{ msg.receiver_name }}</strong>
+                                        </span>
+                                        <small class="text-muted">{{ msg.created_at }}</small>
+                                    </div>
+                                    {% if msg.content %}
+                                        <div class="message-body ps-2">{{ msg.content }}</div>
+                                    {% endif %}
+                                    {% if msg.file_url %}
+                                        <div class="mt-2 ps-2">
+                                            {% if msg.file_type == 'image' %}
+                                                <a href="{{ msg.file_url }}" target="_blank" title="클릭하여 원본 사진 보기">
+                                                    <img src="{{ msg.file_url }}" class="chat-image-attachment border shadow-sm" alt="{{ msg.file_name }}">
+                                                </a>
+                                            {% else %}
+                                                <a href="/api/download/{{ msg.file_url.split('/')[-1] }}?name={{ msg.file_name }}" class="chat-file-box shadow-sm" download>
+                                                    <i class="bi bi-file-earmark-arrow-down-fill fs-4 text-info me-2"></i>
+                                                    <div class="text-truncate" style="max-width: 280px;">
+                                                        <div class="fw-semibold small text-truncate">{{ msg.file_name }}</div>
+                                                        <small class="text-muted">클릭하여 다운로드</small>
+                                                    </div>
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="message-card all-message p-2 rounded-3 bg-white border shadow-sm {% if msg.sender_ip == user_ip %}border-primary-subtle{% endif %}">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span>
+                                            <strong class="{% if msg.sender_ip == user_ip %}text-primary{% else %}text-dark{% endif %}">
+                                                {{ msg.sender_name }}
+                                            </strong>
+                                            <small class="text-muted">({{ msg.sender_ip }})</small>
+                                            {% if msg.sender_ip == user_ip %}
+                                                <span class="badge bg-light text-primary border">나</span>
+                                            {% endif %}
+                                        </span>
+                                        <small class="text-muted">{{ msg.created_at }}</small>
+                                    </div>
+                                    {% if msg.content %}
+                                        <div class="message-body ps-1 text-break">{{ msg.content }}</div>
+                                    {% endif %}
+                                    {% if msg.file_url %}
+                                        <div class="mt-2 ps-1">
+                                            {% if msg.file_type == 'image' %}
+                                                <a href="{{ msg.file_url }}" target="_blank" title="클릭하여 원본 사진 보기">
+                                                    <img src="{{ msg.file_url }}" class="chat-image-attachment border shadow-sm" alt="{{ msg.file_name }}">
+                                                </a>
+                                            {% else %}
+                                                <a href="/api/download/{{ msg.file_url.split('/')[-1] }}?name={{ msg.file_name }}" class="chat-file-box shadow-sm" download>
+                                                    <i class="bi bi-file-earmark-arrow-down-fill fs-4 text-primary me-2"></i>
+                                                    <div class="text-truncate" style="max-width: 280px;">
+                                                        <div class="fw-semibold small text-truncate">{{ msg.file_name }}</div>
+                                                        <small class="text-muted">클릭하여 다운로드</small>
+                                                    </div>
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Chat Input Section -->
+                <div class="card-footer bg-white border-top p-3">
+                    <form id="chatForm" onsubmit="return false;">
+                        <!-- Message Target Options -->
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-12 col-md-auto d-flex align-items-center gap-3">
+                                <span class="fw-bold small text-secondary">전송 대상:</span>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="sendType" id="typeAll" value="all" checked>
+                                    <label class="form-check-label small" for="typeAll">
+                                        <i class="bi bi-globe me-1 text-primary"></i>전체에게
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="sendType" id="typeNotice" value="notice">
+                                    <label class="form-check-label small" for="typeNotice">
+                                        <i class="bi bi-megaphone me-1 text-warning"></i>공지사항
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="sendType" id="typeDm" value="dm">
+                                    <label class="form-check-label small" for="typeDm">
+                                        <i class="bi bi-lock me-1 text-info"></i>특정 사용자 (귓속말)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Target User Dropdown (Visible only when typeDm is selected) -->
+                            <div class="col-12 col-md-auto ms-auto d-none" id="receiverSelectWrapper">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light"><i class="bi bi-person-fill"></i></span>
+                                    <select class="form-select form-select-sm" id="receiverSelect">
+                                        <option value="">수신자 선택...</option>
+                                        <!-- Dynamically populated -->
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Attached File Preview Container -->
+                        <div id="attachedFilePreviewContainer" class="d-none alert alert-light border d-flex align-items-center justify-content-between py-1 px-3 mb-2 shadow-sm rounded-3">
+                            <div class="d-flex align-items-center text-truncate me-2">
+                                <i class="bi bi-paperclip fs-5 text-primary me-2" id="attachedFileIcon"></i>
+                                <div class="text-truncate">
+                                    <span class="fw-bold small text-truncate" id="attachedFileName">파일명</span>
+                                    <small class="text-muted ms-2" id="attachedFileSize">(0 KB)</small>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0 text-decoration-none" id="btnRemoveAttachedFile" title="첨부 취소">
+                                <i class="bi bi-x-circle-fill fs-5"></i>
+                            </button>
+                        </div>
+
+                        <!-- Message Textarea, Attachment Button & Send Button -->
+                        <div class="input-group shadow-sm rounded-3">
+                            <!-- Hidden File Input -->
+                            <input type="file" id="fileInput" class="d-none">
+                            <!-- File Attachment Button -->
+                            <button type="button" class="btn btn-outline-secondary px-3" id="btnAttachFile" title="그림/파일 첨부">
+                                <i class="bi bi-paperclip fs-5"></i>
+                            </button>
+                            <!-- Multi-line Textarea -->
+                            <textarea class="form-control" id="messageInput" rows="2" placeholder="메시지를 입력하세요 (Enter: 전송, Ctrl+Enter: 줄바꿈)..."></textarea>
+                            <!-- Send Button -->
+                            <button class="btn btn-primary px-4 fw-bold d-flex flex-column justify-content-center align-items-center" type="submit" id="btnSend">
+                                <div><i class="bi bi-send-fill me-1"></i>전송</div>
+                                <small class="text-white-50" style="font-size: 0.65rem;">Enter</small>
+                            </button>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1 px-1">
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                <i class="bi bi-keyboard me-1"></i><strong>Enter</strong>: 메시지 전송 | <strong>Ctrl + Enter</strong>: 다음 줄로 줄바꿈
+                            </small>
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                <i class="bi bi-image me-1"></i>사진(JPG, PNG 등) 및 일반 파일 업로드 지원
+                            </small>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Online Users Sidebar (Right) -->
+        <div class="col-12 col-lg-3">
+            <div class="card shadow-sm border-0 d-flex flex-column" style="height: calc(100vh - 200px); min-height: 520px;">
+                <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center border-bottom">
+                    <span class="fw-bold text-dark">
+                        <i class="bi bi-people-fill text-success me-2"></i>접속자 목록
+                    </span>
+                    <span class="badge bg-success rounded-pill" id="onlineUserCount">{{ active_users|length }}명</span>
+                </div>
+                
+                <div class="card-body p-2 overflow-auto flex-grow-1 bg-white">
+                    <ul class="list-group list-group-flush" id="onlineUsersList">
+                        <!-- Populated dynamically and initially -->
+                        {% for u in active_users %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-2 py-2 border-0 rounded mb-1 bg-light user-item" data-ip="{{ u.ip }}">
+                                <div class="d-flex align-items-center text-truncate">
+                                    <i class="bi bi-circle-fill text-success me-2" style="font-size: 0.6rem;"></i>
+                                    <div class="text-truncate">
+                                        <div class="fw-semibold small text-truncate">{{ u.nickname }}</div>
+                                        <small class="text-muted font-monospace" style="font-size: 0.75rem;">{{ u.ip }}</small>
+                                    </div>
+                                </div>
+                                <div>
+                                    {% if u.ip == user_ip %}
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">나</span>
+                                    {% else %}
+                                        <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-quick-dm" data-ip="{{ u.ip }}" data-nickname="{{ u.nickname }}" title="귓속말 보내기">
+                                            <i class="bi bi-chat-quote"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="card-footer bg-light p-2 text-center text-muted border-top small" style="font-size: 0.78rem;">
+                    <i class="bi bi-shield-lock me-1"></i>IP당 1개의 세션만 접속 허용
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: Nickname Change Modal -->
+<div class="modal fade" id="nicknameModal" tabindex="-1" aria-labelledby="nicknameModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold" id="nicknameModalLabel">
+                    <i class="bi bi-pencil-square text-primary me-2"></i>이름(닉네임) 변경
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    변경한 이름은 계속 유지되며, 모든 참가자에게 실시간으로 반영됩니다.
+                </p>
+                <div class="mb-3">
+                    <label for="newNicknameInput" class="form-label fw-bold">새 닉네임</label>
+                    <input type="text" class="form-control" id="newNicknameInput" value="{{ nickname }}" maxlength="30" placeholder="사용할 이름을 입력하세요">
+                    <div class="form-text">최대 30자까지 입력 가능합니다.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="btnSaveNickname">
+                    <i class="bi bi-check-lg me-1"></i>변경 저장
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Search / Explore Chatting Modal (탐색창) -->
+<div class="modal fade" id="searchModal" tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold" id="searchModalLabel">
+                    <i class="bi bi-search text-info me-2"></i>채팅 내용 탐색창 (기존 대화 검색)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Search Controls -->
+                <div class="row g-2 mb-4">
+                    <div class="col-12 col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" class="form-control" id="searchKeyword" placeholder="검색할 대화 내용을 입력하세요...">
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <select class="form-select" id="searchTypeFilter">
+                            <option value="all_types">모든 메시지 유형</option>
+                            <option value="all">전체 메시지</option>
+                            <option value="notice">공지사항</option>
+                            <option value="dm">귓속말</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <button class="btn btn-primary w-100 fw-bold" id="btnExecuteSearch">
+                            <i class="bi bi-funnel-fill me-1"></i>검색하기
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Results Section -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0 text-secondary">
+                        <i class="bi bi-card-list me-1"></i>탐색 결과 <span class="badge bg-secondary" id="searchResultCount">0건</span>
+                    </h6>
+                    <small class="text-muted">내가 보낸/받은 메시지 및 전체/공지 메시지만 검색됩니다.</small>
+                </div>
+
+                <div class="border rounded-3 p-3 bg-light overflow-auto" style="max-height: 450px;" id="searchResultsContainer">
+                    <div id="searchResultsList" class="d-flex flex-column gap-2">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-search display-6 text-black-50 mb-2 d-block"></i>
+                            검색어를 입력하고 검색 버튼을 눌러주세요.
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicate Connection Warning Modal -->
+<div class="modal fade" id="duplicateConnectionModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>접속 거부 알림
+                </h5>
+            </div>
+            <div class="modal-body text-center p-4">
+                <i class="bi bi-x-octagon-fill text-danger display-3 mb-3 d-block"></i>
+                <h5 class="fw-bold text-danger" id="rejectionMessage">동일한 IP로 이미 접속 중인 창이 있습니다.</h5>
+                <p class="text-muted mt-2">
+                    이 시스템은 <strong>IP당 1개의 접속</strong>만 허용합니다.<br>
+                    이전 창을 닫은 후 다시 시도해주세요.
+                </p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-danger px-4">로그인 화면으로 이동</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Socket.IO Client Library -->
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<!-- Chat JavaScript -->
+<script>
+    // Pass server rendered variables to Javascript
+    const CURRENT_USER_IP = "{{ user_ip }}";
+    let CURRENT_USER_NICKNAME = "{{ nickname }}";
+</script>
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+{% endblock %}
+
